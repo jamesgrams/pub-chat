@@ -11,4 +11,4 @@ An application that allows you to chat with friends and play music together. Pub
 
 ## Notes
 
-WebRTC requires HTTPS beyond your private network and getUserMedia requires HTTPS beyond `localhost`, so for testing, it may be a good idea to add the IP you are testing on (http://XXX.XXX.XXX.XXX) to the chrome flag `#unsafely-treat-insecure-origin-as-secure`.
+WebRTC requires HTTPS beyond your private network and getUserMedia requires HTTPS beyond `localhost`, so for testing, it may be a good idea to add the IP you are testing on (e.g. `http://192.168.1.4`) to the chrome flag `#unsafely-treat-insecure-origin-as-secure`.
