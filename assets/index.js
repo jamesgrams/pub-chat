@@ -33,7 +33,7 @@ window.addEventListener('load', function() {
 
     // if the room code is specified in the url, just login.
     if( roomCode ) {
-        socket = io.connect("http://"+window.location.hostname);
+        socket = io.connect(window.location.protocol+"//"+window.location.hostname);
         socket.on("connect", function() {
             displayScreencast();
         });
@@ -189,7 +189,7 @@ function login() {
     document.querySelector("#splash button").onclick = function() {};
     document.querySelector("#error-message").innerHTML = "";
     roomCode = document.querySelector("#code").value;
-    socket = io.connect("http://"+window.location.hostname);
+    socket = io.connect(window.location.protocol+"//"+window.location.hostname);
     socket.on("connect", function() {
         console.log("socket connected");
         if( !isServer ) {
@@ -720,7 +720,7 @@ function errorHandler(error) {
 function makeRequest(type, url, parameters, callback, errorCallback, useFormData) {
     var parameterKeys = Object.keys(parameters);
 
-    url = "http://" + window.location.hostname + url;
+    url = window.location.protocol+"//" + window.location.hostname + url;
     if( type == "GET" && parameterKeys.length ) {
         var parameterArray = [];
         for( var i=0; i<parameterKeys.length; i++ ) {
