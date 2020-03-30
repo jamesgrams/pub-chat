@@ -1,0 +1,158 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: 'Arial', sans-serif;
+    color: white;
+    background-color: black;
+    font-size: 30px;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    text-align: center;
+}
+
+h1 {
+    margin: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 60px;
+    position: absolute;
+    top: 25%;
+    transform: translateY(-50%);
+    letter-spacing: 2px;
+}
+
+#splash.hidden {
+    display: none;
+}
+
+#splash img {
+    width: 100px;
+    vertical-align: middle;
+    position: absolute;
+    top: 75%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#splash-content {
+    width: 100%;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+label {
+    display: block;
+}
+
+input {
+    font-family: 'Arial', sans-serif;
+    color: black;
+    font-size: 30px;
+}
+
+button {
+    border: 2px solid black;
+    background-color: white;
+    font-size: 30px;
+    margin-top: 20px;
+    padding: 5px 50px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: aquamarine;
+}
+
+#videos {
+    display: none;
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
+}
+
+#videos.visible {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: column;
+}
+
+#videos video {
+    display: inline-block;
+    object-fit: cover;
+    vertical-align: middle;
+    object-position: center;
+}
+
+.playlist-toggler {
+    position: absolute;
+    z-index: 20001;
+    right: 20px;
+    top: 20px;
+    cursor: pointer;
+    background-color: white;
+    padding: 10px;
+    user-select: none;
+    margin-top: 0;
+    opacity: 0.5;
+    font-size: 20px;
+    border: none;
+}
+
+.playlist-title {
+    font-size: 30px;
+    margin-bottom: 10px;
+    
+}
+
+.playlist {
+    position: absolute;
+    width: 300px;
+    text-align: center;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    color: black;
+    padding: 20px;
+    z-index: 20000;
+    font-size: 16px;
+    display: none;
+}
+
+.playlist.visible {
+    display: block;
+}
+
+.playlist-songs {
+    height: 200px;
+    overflow: auto;
+    text-align: left;
+}
+
+.playlist input, .playlist button {
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+.song.playing {
+    color: green;
+    font-weight: bold;
+}
+
+.song.played {
+    text-decoration: line-through;
+    color: grey;
+}
+
+.is-server body {
+    display: none;
+}
+
+#error-message {
+    color: red;
+}

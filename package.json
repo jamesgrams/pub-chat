@@ -1,0 +1,26 @@
+{
+  "name": "pub-chat",
+  "author": "James Grams <james@game103.net> (https://game103.net)",
+  "version": "1.0.0",
+  "description": "A Video Gallery",
+  "main": "src/index.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "puppeteer": "^1.11.0",
+    "express": "^4.16.0",
+    "socket.io": "2.2.0",
+    "youtube-dl": "^3.0.2"
+  },
+  "engines": {
+    "node": ">= 10.10.0",
+    "npm": ">= 3.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not ie <= 8"
+  ]
+}
