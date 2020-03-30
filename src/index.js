@@ -166,7 +166,8 @@ async function addMenuPage( roomCode ) {
     menuPage.on("requestfailed", function (request) {
         console.log("request failed: " + request.url());
     })
-    await menuPage.goto(LOCALHOST + ":" + PORT + "?" + IS_SERVER_PARAM + "&" + ROOM_CODE_PARAM + "=" + encodeURIComponent(roomCode));
+    let menuUrl = process.env.MENU_URL ? process.env.MENU_URL : LOCALHOST + ":" + PORT;
+    await menuPage.goto(menuUrl + "?" + IS_SERVER_PARAM + "&" + ROOM_CODE_PARAM + "=" + encodeURIComponent(roomCode));
     menuPages[roomCode] = menuPage;
     serverSocketIds[roomCode] = null;
     clientSocketIds[roomCode] = [];
