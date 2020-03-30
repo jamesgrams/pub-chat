@@ -387,7 +387,7 @@ function handleRemoteSdp(data) {
 
     var peerConnection = peerConnections.filter( (el) => el.id == data.id )[0].peerConnection;
 
-    // TODO, we need to reoffer here if the signalising state is stable.
+    // we need to reoffer here if the signalising state is stable.
     // Set the information about the remote peer set in the offer/answer
     peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp)).then(function() {
         // If this was an offer sent from Galleria, respond to the client

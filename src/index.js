@@ -44,9 +44,15 @@ let requestLocked = false;
 /**************** Express ****************/
 
 // Delete everything left over in the tmp directory
-let tmpFiles = fs.readdirSync(ASSETS_DIR + "/" + TEMP_DIR);
-for( let file of tmpFiles ) {
-    fs.unlinkSync(ASSETS_DIR + "/" + TEMP_DIR + "/" + file);
+let tmpPath = ASSETS_DIR + "/" + TEMP_DIR;
+if( tmpPath ) {
+    let tmpFiles = fs.readdirSync(tmpPath);
+    for( let file of tmpFiles ) {
+        fs.unlinkSync(ASSETS_DIR + "/" + TEMP_DIR + "/" + file);
+    }
+}
+else {
+    fs.mkdirSync(tmpPath);
 }
 
 const app = express();
