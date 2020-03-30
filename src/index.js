@@ -85,7 +85,7 @@ app.get("/join", async function(request, response) {
         requestLocked = true;
         // create a host page if needed
         // if there is no room code, the connect screencast will throw an arrow.
-        if( request.query.roomCode && !menuPages[request.query.roomCode] ) {
+        if( request.query.roomCode && (!menuPages[request.query.roomCode] || menuPages[request.query.roomCode].isClosed()) ) {
             await addMenuPage(request.query.roomCode);
         }
         let errorMessage = await connectScreencast( request.query.id, request.query.roomCode );
