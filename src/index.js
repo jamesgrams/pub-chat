@@ -128,7 +128,7 @@ server.listen(PORT);
  */
 async function launchBrowser() {
     let options = {
-        headless: false,
+        headless: true,
         defaultViewport: null,
         args: [
             /*'--start-fullscreen',*/
