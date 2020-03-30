@@ -45,7 +45,7 @@ let requestLocked = false;
 
 // Delete everything left over in the tmp directory
 let tmpPath = ASSETS_DIR + "/" + TEMP_DIR;
-if( tmpPath ) {
+if( fs.existsSync(tmpPath) ) {
     let tmpFiles = fs.readdirSync(tmpPath);
     for( let file of tmpFiles ) {
         fs.unlinkSync(ASSETS_DIR + "/" + TEMP_DIR + "/" + file);
