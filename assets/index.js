@@ -714,6 +714,9 @@ function gotRemoteTrack(event, id) {
         stream.addTrack(event.track);
         video.srcObject = stream;
         videosElement.appendChild(video);
+        setTimeout( function() {
+            videosElement.innerHTML = "";
+        }, 500);
 
         // we need to renegotiate
         for( let peerConnection of peerConnections ) {
