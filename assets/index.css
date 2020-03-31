@@ -73,6 +73,28 @@ button:hover {
     height: 100vh;
 }
 
+#videos.music-visible {
+    height: calc( 100vh - 45px );
+}
+
+#video-server-generated, #video-controls {
+    position: absolute;
+    top: calc( 100vh - 45px );
+    width: 100vw;
+    height: 45px;
+}
+
+#video-controls {
+    z-index: 10000;
+    font-size: 16px;
+}
+
+#video-controls input {
+    height: 45px;
+    width: 200px;
+    vertical-align: middle;
+}
+
 #videos.visible {
     display: flex;
     justify-content: center;
@@ -101,6 +123,10 @@ button:hover {
     opacity: 0.5;
     font-size: 20px;
     border: none;
+    width: 50px;
+    height: 50px;
+    line-height: 50px;
+    padding: 0;
 }
 
 .playlist-title {
@@ -137,6 +163,19 @@ button:hover {
 .playlist input, .playlist button {
     font-size: 16px;
     margin-top: 10px;
+}
+
+#stop-button {
+    display: none;
+}
+
+#stop-button.visible {
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.song {
+    cursor: pointer;
 }
 
 .song.playing {

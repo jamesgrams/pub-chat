@@ -17,6 +17,8 @@ var remoteMidMap = {}; // this is the map of mids to track PAIRS as KEPT BY THE 
 var midToTrackMap = {}; // map mids to tracks for the client
 var midMapCounter = 0;
 var remoteMidMapCounter = -1;
+var musicVolume = 0.2;
+var playNextVideoTimeout;
 var RESET_CANCEL_STREAMING_INTERVAL = 1000; // let the server know we exist every second. It won't cancel until no response for 10 seconds.
 var VIDEO_FETCH_TIMEOUT = 1000;
 
@@ -82,6 +84,19 @@ function drawPlaylist() {
         playlistSongs.classList.add("playlist-songs");
         playlistElement.appendChild(playlistSongs);
 
+        var stopButton = document.createElement("button");
+        stopButton.setAttribute("id", "stop-button");
+        stopButton.innerText = "Stop";
+        stopButton.onclick = function() {
+            if( document.querySelector(".song.playing") ) {
+                makeRequest("POST", "/playlist-cursor", {
+                    roomCode: roomCode,
+                    cursor: document.querySelectorAll(".song").length // go to the end of the list
+                });
+            }
+        }
+        playlistElement.appendChild(stopButton);
+
         var input = document.createElement("input");
         input.setAttribute("type", "text");
         input.setAttribute("placeholder", "YouTube URL");
@@ -109,13 +124,23 @@ function drawPlaylist() {
         playlistToggler.onclick = function() {
             if( playlistElement.classList.contains("visible") ) {
                 playlistElement.classList.remove("visible");
+                playlistToggler.innerText = "🎵";
             }
             else {
                 playlistElement.classList.add("visible");
+                playlistToggler.innerText = "X";
             }
         }
         document.body.appendChild(playlistToggler);
     }
+
+    if( playlistCursor < playlist.length && playlistCursor >= 0 ) {
+        document.querySelector("#stop-button").classList.add("visible");
+    }
+    else {
+        document.querySelector("#stop-button").classList.remove("visible");
+    }
+
     playlistSongs.innerHTML = "";
     for( var i=0; i<playlist.length; i++ ) {
         var song = document.createElement("div");
@@ -126,6 +151,14 @@ function drawPlaylist() {
         }
         if( i==playlistCursor ) {
             song.classList.add("playing");
+        }
+        song.onclick = function() {
+            if( !this.classList.contains("playing") ) {
+                makeRequest("POST", "/playlist-cursor", {
+                    roomCode: roomCode,
+                    cursor: Array.prototype.indexOf.call(playlistSongs.querySelectorAll(".song"), this)
+                });
+            }
         }
         playlistSongs.appendChild(song);
     }
@@ -144,12 +177,34 @@ function updatePlaylist(pl) {
 }
 
 /**
+ * Change the video being played.
+ * @param {Number} cursor - The new playlist cursor.
+ */
+function changeVideo(cursor) {
+    if( cursor != playlistCursor ) {
+        clearTimeout(playNextVideoTimeout);
+        playlistCursor = cursor;
+        var musicStream = document.querySelector("#music-stream.streaming");
+        if( musicStream ) {
+            playlistCursor--; // we'll just call the onended function for the current music
+            musicStream.onended();
+            musicStream.onended = function() {};
+            musicStream.onerror = function() {};
+        }
+        else {
+            playNextVideo();
+        }
+    }
+}
+
+/**
  * Play the next video in the stream.
  */
 function playNextVideo() {
     if( playlist[playlistCursor] ) {
         try {
             var musicStream = document.querySelector("#music-stream");
+            musicStream.classList.add("streaming");
             musicStream.setAttribute("src", playlist[playlistCursor].url);
             musicStream.onloadeddata = function() {
                 var song = musicStream.captureStream().getAudioTracks()[0];
@@ -162,6 +217,7 @@ function playNextVideo() {
                 }
                 updatePlaylist();
                 musicStream.onended = function() {
+                    musicStream.classList.remove("streaming");
                     removeTracksFromPeerConnections( "server-generated", [song] );
                     playlistCursor++;
                     updatePlaylist(); // on the clients
@@ -169,16 +225,16 @@ function playNextVideo() {
                 }
             }
             musicStream.onerror = function() {
-                setTimeout(playNextVideo, VIDEO_FETCH_TIMEOUT);
+                playNextVideoTimeout = setTimeout(playNextVideo, VIDEO_FETCH_TIMEOUT);
             }
         }
         catch(err) {
-            setTimeout(playNextVideo, VIDEO_FETCH_TIMEOUT);
+            playNextVideoTimeout = setTimeout(playNextVideo, VIDEO_FETCH_TIMEOUT);
         }
     }
     // video not available yet
     else {
-        setTimeout(playNextVideo, VIDEO_FETCH_TIMEOUT);
+        playNextVideoTimeout = setTimeout(playNextVideo, VIDEO_FETCH_TIMEOUT);
     }
 }
 
@@ -488,8 +544,8 @@ function createdDescription(id, description) {
  * We only do one draw per offer.
  */
 function drawVideos() {
-    var videosElement = document.querySelector("#videos");
-    //videosElement.innerHTML = "";
+    // var videosElement = document.querySelector("#videos");
+    // videosElement.innerHTML = "";
 
     // update remote tracks.
     var remoteTrackMap = {};
@@ -508,10 +564,24 @@ function drawVideos() {
         var curId = allVideos[i].getAttribute("id").replace("video-","");
         if( !mapKeys.includes(decodeURIComponent(curId)) ) {
             allVideos[i].parentNode.removeChild(allVideos[i]);
+            if( curId == "server-generated" ) {
+                var controls = document.querySelector("#video-controls");
+                if( controls ) {
+                    controls.parentNode.removeChild(controls);
+                }
+            }
         }
     }
 
     var numTracks = mapKeys.length+1; // +1 for the local track
+    if( mapKeys.includes("server-generated") ) {
+        numTracks -= 1; // The music doesn't tile.
+        document.querySelector("#videos").classList.add("music-visible");
+    }
+    else {
+        document.querySelector("#videos").classList.remove("music-visible");
+    }
+    console.log(numTracks);
 
     var tiles = Math.ceil(Math.sqrt(numTracks));
     var percent = Math.floor(100/tiles);
@@ -531,8 +601,11 @@ function drawVideos() {
     }
 
     createVideoElement([localTracks[0]], 0, colsThatGetExpandedHeight, tiles, percent, heightTiles, expandedPercent, heightPercent, "user-media");
+    var index = 0;
     for( var i=0; i<mapKeys.length; i++ ) {
-        createVideoElement(remoteTrackMap[mapKeys[i]], i+1, colsThatGetExpandedHeight, tiles, percent, heightTiles, expandedPercent, heightPercent, mapKeys[i]);
+        if( mapKeys[i] == "server-generated" ) index --; // treat the server generated music like it is not there
+        createVideoElement(remoteTrackMap[mapKeys[i]], index+1, colsThatGetExpandedHeight, tiles, percent, heightTiles, expandedPercent, heightPercent, mapKeys[i]);
+        index ++;
     }
 }
 
@@ -551,7 +624,7 @@ function drawVideos() {
 function createVideoElement(tracks, index, colsThatGetExpandedHeight, tiles, percent, heightTiles, expandedPercent, heightPercent, id) {
     var videosElement = document.querySelector("#videos");
     var col = Math.floor(index*(heightPercent+1)/100); // starts at 0
-    var video = videosElement.querySelector("#video-" + encodeURIComponent(id));
+    var video = document.querySelector("#video-" + encodeURIComponent(id));
     var createdVideo = false;
     if( !video ) {
         createdVideo = true;
@@ -559,8 +632,15 @@ function createVideoElement(tracks, index, colsThatGetExpandedHeight, tiles, per
         video.setAttribute("playsinline", "true");
         video.setAttribute("autoplay", true);
         video.setAttribute("id", "video-" + encodeURIComponent(id));
-        if( id == "server-generated" ) video.setAttribute("controls", true);
-        videosElement.appendChild(video);
+        if( id == "server-generated" ) {
+            //video.setAttribute("controls", true);
+            video.volume = musicVolume;
+            document.body.appendChild(video); // the music is seperate
+            createVideoControls();
+        }
+        else {
+            videosElement.appendChild(video);
+        }
     }
     if( id == "server-generated" || (id =="user-media" && createdVideo) || (video.captureStream().getTracks().length < 2 && tracks.length == 2) ) { // only update the streams if we don't have audio and video yet. kills 2 birds with one stone. always update the audio stream (since it gets updated - server-generated id gets different tracks) and then allow updates if we don't ahve all the tracks for a stream yet. we neever update peoples streams.
         var stream = new MediaStream();
@@ -570,7 +650,35 @@ function createVideoElement(tracks, index, colsThatGetExpandedHeight, tiles, per
         video.srcObject = stream;
     }
     
-    video.setAttribute("style","height:"+(col >= (heightTiles - colsThatGetExpandedHeight + (tiles-heightTiles)) ? expandedPercent : heightPercent)+"%;"+"width:"+percent+"%;");
+    if( id != "server-generated" ) video.setAttribute("style","height:"+(col >= (heightTiles - colsThatGetExpandedHeight + (tiles-heightTiles)) ? expandedPercent : heightPercent)+"%;"+"width:"+percent+"%;");
+}
+
+/**
+ * Create video controls (for the music).
+ */
+function createVideoControls() {
+    var videoControls = document.createElement("div");
+    videoControls.setAttribute("id", "video-controls");
+
+    var sliderLabel = document.createElement("label");
+    sliderLabel.innerText = "Music Volume: ";
+    videoControls.appendChild(sliderLabel);
+
+    var volumeSlider = document.createElement("input");
+    volumeSlider.setAttribute("type", "range");
+    volumeSlider.setAttribute("min", 0);
+    volumeSlider.setAttribute("max", 100);
+    volumeSlider.value = musicVolume * 100;
+    volumeSlider.oninput = function() {
+        var music = document.querySelector("#video-server-generated");
+        musicVolume = this.value/100;
+        if( music ) {
+            music.volume = musicVolume;
+        }
+    };
+    sliderLabel.appendChild(volumeSlider);
+
+    document.body.appendChild(videoControls);
 }
 
 /**

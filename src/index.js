@@ -27,13 +27,15 @@ const IS_SERVER_PARAM = "is_server";
 const ROOM_CODE_PARAM = "room_code";
 const INDEX_PAGE = "index.html";
 const STREAMING_HEARTBEAT_TIME = 10000; // after 10 seconds of no response from the client, we will force close the stream
+const ROOMS_ALLOWED = 2;
 const ERROR_MESSAGES = {
     "genericError": "An error has ocurred.",
     "menuPageClosed": "Room unavailable. Please try a different one.",
     "clientAndServerAreNotBothConnected": "Client and server are not both connected.",
     "screencastNotStarted": "Screencast not started.",
     "invalidRequest": "Invalid Request.",
-    "locked": "The server is busy. Please wait a second."
+    "locked": "The server is busy. Please wait a second.",
+    "tooManyRooms": "Too many rooms are being used at the moment. Please try again later."
 }
 
 let browser;
@@ -80,42 +82,79 @@ app.get("/", async function(request, response) {
 
 // Connect the menu page to the signal server
 app.get("/join", async function(request, response) {
-    if( !requestLocked ) {
-        console.log("app serving /join");
-        requestLocked = true;
-        // create a host page if needed
-        // if there is no room code, the connect screencast will throw an arrow.
-        if( request.query.roomCode && (!menuPages[request.query.roomCode] || menuPages[request.query.roomCode].isClosed()) ) {
-            await addMenuPage(request.query.roomCode);
+    try {
+        if( !requestLocked ) {
+            console.log("app serving /join");
+            requestLocked = true;
+            // create a host page if needed
+            // if there is no room code, the connect screencast will throw an arrow.
+            // should be null..
+            if( request.query.roomCode && (!menuPages[request.query.roomCode] || menuPages[request.query.roomCode].isClosed()) ) {
+                let errorAdding = await addMenuPage(request.query.roomCode);
+                if( errorAdding ) {
+                    requestLocked = false;
+                    writeActionResponse( response, errorAdding );
+                }
+            }
+            let errorMessage = await connectScreencast( request.query.id, request.query.roomCode );
+            requestLocked = false;
+            writeActionResponse( response, errorMessage );
         }
-        let errorMessage = await connectScreencast( request.query.id, request.query.roomCode );
-        requestLocked = false;
-        writeActionResponse( response, errorMessage );
+        else {
+            writeActionResponse( response, ERROR_MESSAGES.locked );
+        }
     }
-    else {
-        writeActionResponse( response, ERROR_MESSAGES.locked );
+    catch(err) {
+        console.log(err);
+        writeActionResponse( response, ERROR_MESSAGES.genericError );
     }
 });
 
 // Connect the menu page to the signal server
 app.get("/stop", async function(request, response) {
     console.log("app serving /stop");
-    // don't allow screencast to start while we're trying to do something else
-    let errorMessage = await stopScreencast( request.query.id );
-    writeActionResponse( response, errorMessage );
+    try {
+        // don't allow screencast to start while we're trying to do something else
+        let errorMessage = await stopScreencast( request.query.id );
+        writeActionResponse( response, errorMessage );
+    }
+    catch(err) {
+        console.log(err);
+        writeActionResponse( response, ERROR_MESSAGES.genericError );
+    }
 });
 
 // Reset screencast cancel timeout
 app.get("/reset-cancel", async function(request, response) {
     //console.log("app serving /reset-cancel");
-    let errorMessage = resetScreencastTimeout( request.query.id, request.query.roomCode );
-    writeActionResponse( response, errorMessage );
+    try {
+        let errorMessage = resetScreencastTimeout( request.query.id, request.query.roomCode );
+        writeActionResponse( response, errorMessage );
+    }
+    catch(err) {
+        console.log(err);
+        writeActionResponse( response, ERROR_MESSAGES.genericError );
+    }
 });
 
 // add a link to the playlist
 app.post("/playlist", async function(request, response) {
+    console.log("app serving /playlist");
     try {
-        var errorMessage = addToPlaylist(request.body.url, request.body.roomCode);
+        let errorMessage = addToPlaylist(request.body.url, request.body.roomCode);
+        writeActionResponse( response, errorMessage );
+    }
+    catch(err) {
+        console.log(err);
+        writeActionResponse( response, ERROR_MESSAGES.genericError );
+    }
+});
+
+// change the playlist counter to basically change the song
+app.post("/playlist-cursor", async function(request, response) {
+    console.log("app serving /playlist-cursor");
+    try {
+        let errorMessage = changePlaylistCursor(request.body.cursor, request.body.roomCode);
         writeActionResponse( response, errorMessage );
     }
     catch(err) {
@@ -149,8 +188,13 @@ async function launchBrowser() {
 /**
  * Add a menu page
  * @param {string} roomCode - The string of the room code.
+ * @returns {(boolean|string)} - An error message if there is one or false if not.
  */
 async function addMenuPage( roomCode ) {
+
+    let totalRooms = Object.keys(menuPages).filter( el => menuPages[el] ).length;
+    if( totalRooms >= ROOMS_ALLOWED ) return ERROR_MESSAGES.tooManyRooms;
+
     let menuPage;
     if( !browser || !browser.isConnected() ) {
         await launchBrowser();
@@ -172,6 +216,10 @@ async function addMenuPage( roomCode ) {
     serverSocketIds[roomCode] = null;
     clientSocketIds[roomCode] = [];
     startedClientIds[roomCode] = [];
+    clientMediaReady[roomCode] = false;
+    streamerMediaReady[roomCode] = false;
+
+    return false;
 }
 
 /**
@@ -204,6 +252,17 @@ function writeResponse( response, status, object, code, contentType ) {
     
     let responseObject = Object.assign( {status:status}, object );
     response.end(JSON.stringify(responseObject));
+}
+
+/**
+ * Change the playlist cursor - change what song is playing.
+ * @param {number} cursor - The index of the song to play.
+ * @param {string} roomCode - The room code of the meeting.
+ */
+function changePlaylistCursor(cursor, roomCode) {
+    if( isNaN(cursor) || !roomCode || !menuPages[roomCode] ) return ERROR_MESSAGES.invalidRequest;
+
+    menuPages[roomCode].evaluate( c => changeVideo(c), cursor );
 }
 
 /**
@@ -256,14 +315,14 @@ function addToPlaylist( url, roomCode ) {
  * @returns {(boolean|string)} The filepath for the YouTube video or false if we can't get it.
  */
 function getFileFromUrl( url, roomCode ) {
-    var string = url.match(/v=(.*)/);
+    var string = url.match(/[\?&]v=([^&]*)/);
     if( !string ) return false;
     return ASSETS_DIR + "/" + TEMP_DIR + "/" + roomCode + "--" + string[1] + ".webm";
 }
 
 // Signal server section
-let streamerMediaReady = false;
-let clientMediaReady = false;
+let streamerMediaReady = {};
+let clientMediaReady = {};
 let SERVER_ID = "server";
 let serverSocketIds = {};
 let clientSocketIds = {}; // Arrays of clients keyed by room code
@@ -271,59 +330,94 @@ let startedClientIds = {};
 let cancelStreamingTimeouts = [];
 io.on('connection', function(socket) {
     socket.on("connect-screencast-streamer", function(message) {
-        if( !serverSocketIds[message.roomCode] ) { // only one server allowed per room
-            console.log("screencast streamer connected");
-            serverSocketIds[message.roomCode] = socket.id;
+        try {
+            if( !serverSocketIds[message.roomCode] ) { // only one server allowed per room
+                console.log("screencast streamer connected");
+                serverSocketIds[message.roomCode] = socket.id;
+            }
+        }
+        catch(err) {
+            console.log(err);
         }
     } );
     // we have to wait for the following two events until we are ready
     // to start streaming
     socket.on("streamer-media-ready", function(message) {
-        console.log("screencast media ready");
-        streamerMediaReady = true;
-        if( clientMediaReady ) {
-            for( let clientSocketId of clientSocketIds[message.roomCode].filter( el => !startedClientIds[message.roomCode].includes(el) ) ) {
-                startScreencast(clientSocketId, message.roomCode);
+        try {
+            console.log("screencast media ready");
+            streamerMediaReady[message.roomCode] = true;
+            if( clientMediaReady[message.roomCode] ) {
+                for( let clientSocketId of clientSocketIds[message.roomCode].filter( el => !startedClientIds[message.roomCode].includes(el) ) ) {
+                    startScreencast(clientSocketId, message.roomCode);
+                }
             }
+        }
+        catch(err) {
+            console.log(err);
         }
     } );
     socket.on("connect-screencast-client", function(message) {
-        if( clientSocketIds[message.roomCode].indexOf(socket.id) == -1 ) {
-            console.log("screencast client connected");
-            clientSocketIds[message.roomCode].push(socket.id);
+        try {
+            if( clientSocketIds[message.roomCode].indexOf(socket.id) == -1 ) {
+                console.log("screencast client connected");
+                clientSocketIds[message.roomCode].push(socket.id);
+            }
+        }
+        catch(err) {
+            console.log(err);
         }
     } );
     socket.on("client-media-ready", function(message) {
-        console.log("screencast client media ready");
-        clientMediaReady = true;
-        if( streamerMediaReady ) {
-            for( let clientSocketId of clientSocketIds[message.roomCode].filter( el => !startedClientIds[message.roomCode].includes(el) ) ) {
-                startScreencast(clientSocketId, message.roomCode);
+        try {
+            console.log("screencast client media ready");
+            clientMediaReady[message.roomCode] = true;
+            if( streamerMediaReady[message.roomCode] ) {
+                for( let clientSocketId of clientSocketIds[message.roomCode].filter( el => !startedClientIds[message.roomCode].includes(el) ) ) {
+                    startScreencast(clientSocketId, message.roomCode);
+                }
             }
+        }
+        catch(err) {
+            console.log(err);
         }
     });
     socket.on("sdp", function(message) {
-        if( socket.id == serverSocketIds[message.roomCode] ) {
-            io.to(message.id).emit("sdp", { "id": SERVER_ID, "sdp": message.description });
+        try {
+            if( socket.id == serverSocketIds[message.roomCode] ) {
+                io.to(message.id).emit("sdp", { "id": SERVER_ID, "sdp": message.description });
+            }
+            else if( clientSocketIds[message.roomCode].includes(socket.id) ) {
+                io.to(serverSocketIds[message.roomCode]).emit("sdp", { "id": socket.id, "sdp": message.description } );
+            }
         }
-        else if( clientSocketIds[message.roomCode].includes(socket.id) ) {
-            io.to(serverSocketIds[message.roomCode]).emit("sdp", { "id": socket.id, "sdp": message.description } );
+        catch(err) {
+            console.log(err);
         }
     } );
     socket.on("ice", function(message) {
-        if( socket.id == serverSocketIds[message.roomCode] ) {
-            io.to(message.id).emit("ice", { "id": SERVER_ID, "ice": message.candidate });
+        try {
+            if( socket.id == serverSocketIds[message.roomCode] ) {
+                io.to(message.id).emit("ice", { "id": SERVER_ID, "ice": message.candidate });
+            }
+            else if( clientSocketIds[message.roomCode].includes(socket.id) ) {
+                io.to(serverSocketIds[message.roomCode]).emit("ice", { "id": socket.id, "ice": message.candidate } );
+            }
         }
-        else if( clientSocketIds[message.roomCode].includes(socket.id) ) {
-            io.to(serverSocketIds[message.roomCode]).emit("ice", { "id": socket.id, "ice": message.candidate } );
+        catch(err) {
+            console.log(err);
         }
     } );
     socket.on("data", function(message) {
-        if( socket.id == serverSocketIds[message.roomCode] ) {
-            io.to(message.id).emit("data", { "id": SERVER_ID, "data": message.data });
+        try {
+            if( socket.id == serverSocketIds[message.roomCode] ) {
+                io.to(message.id).emit("data", { "id": SERVER_ID, "data": message.data });
+            }
+            else if( clientSocketIds[message.roomCode].includes(socket.id) ) {
+                io.to(serverSocketIds[message.roomCode]).emit("data", { "id": socket.id, "data": message.data } );
+            }
         }
-        else if( clientSocketIds[message.roomCode].includes(socket.id) ) {
-            io.to(serverSocketIds[message.roomCode]).emit("data", { "id": socket.id, "data": message.data } );
+        catch(err) {
+            console.log(err);
         }
     } );
 } );
@@ -420,12 +514,13 @@ async function stopScreencast(id, roomCode) {
 
     if( clientSocketIds[roomCode].length ) return false; // there are still more clients
 
-    streamerMediaReady = false;
-    clientJoined = false;
+    streamerMediaReady[roomCode] = false;
+    clientMediaReady[roomCode] = false;
     serverSocketIds[roomCode] = null;
     clientSocketIds[roomCode] = [];
     startedClientIds[roomCode] = [];
-    menuPages[roomCode].close();
+    await menuPages[roomCode].close();
+    menuPages[roomCode] = null;
     if( playlists[roomCode] ) {
         for( let song of playlists[roomCode] ) {
             let file = getFileFromUrl(song.youtubeUrl, roomCode);
