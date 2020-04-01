@@ -19,7 +19,7 @@ var midMapCounter = 0;
 var remoteMidMapCounter = -1;
 var musicVolume = 0.2;
 var playNextVideoTimeout;
-var RESET_CANCEL_STREAMING_INTERVAL = 1000; // let the server know we exist every second. It won't cancel until no response for 10 seconds.
+var RESET_CANCEL_STREAMING_INTERVAL = 9000; // let the server know we exist every four seconds. It won't cancel until no response for 20 seconds.
 var VIDEO_FETCH_TIMEOUT = 1000;
 
 window.addEventListener('load', function() {

@@ -26,7 +26,7 @@ const LOCALHOST = "http://localhost";
 const IS_SERVER_PARAM = "is_server";
 const ROOM_CODE_PARAM = "room_code";
 const INDEX_PAGE = "index.html";
-const STREAMING_HEARTBEAT_TIME = 10000; // after 10 seconds of no response from the client, we will force close the stream
+const STREAMING_HEARTBEAT_TIME = 20000; // after 20 seconds of no response from the client, we will force close the stream
 const ROOMS_ALLOWED = 2;
 const ERROR_MESSAGES = {
     "genericError": "An error has ocurred.",
