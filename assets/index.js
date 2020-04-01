@@ -303,8 +303,8 @@ function connectToSignalServer() {
     else {
         var constraints = {
             video: {
-                width: { min: 320, ideal: 320 },
-                height: { min: 240 },
+                width: { min: 128, ideal: 128, max: 128 },
+                height: { min: 96, max: 96 },
                 frameRate: 3,
                 facingMode: "user"
             },
