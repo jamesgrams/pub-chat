@@ -305,10 +305,13 @@ function connectToSignalServer() {
             video: {
                 width: { min: 320, ideal: 320 },
                 height: { min: 240 },
-                frameRate: 60,
+                frameRate: 30,
                 facingMode: "user"
             },
-            audio: true
+            audio: {
+                sampleRate: { ideal: 44000 },
+                sampleSize: { ideal: 16 }
+            }
         };
         navigator.mediaDevices.getUserMedia(constraints).then(getUserMediaSuccess).catch(
         function(error) {
