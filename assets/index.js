@@ -301,7 +301,16 @@ function connectToSignalServer() {
         //navigator.mediaDevices.getDisplayMedia({"video": { "cursor": "never" }, "audio": true}).then(getDisplayMediaSuccess).catch(errorHandler);
     }
     else {
-        navigator.mediaDevices.getUserMedia({"video": true, "audio": true}).then(getUserMediaSuccess).catch(
+        var constraints = {
+            video: {
+                width: { min: 320, ideal: 320 },
+                height: { min: 240 },
+                frameRate: 30,
+                facingMode: "user",
+            },
+            audio: true
+        };
+        navigator.mediaDevices.getUserMedia(constraints).then(getUserMediaSuccess).catch(
         function(error) {
             // this isn't in GuyStation, but it shouldn't be since we don't fail to get client media...
             clearInterval( resetCancelStreamingInterval );
