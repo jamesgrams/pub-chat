@@ -305,7 +305,7 @@ function connectToSignalServer() {
             video: {
                 width: { min: 320, ideal: 320 },
                 height: { min: 240 },
-                frameRate: 30,
+                frameRate: 10,
                 facingMode: "user"
             },
             audio: {
