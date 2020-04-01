@@ -179,6 +179,9 @@ async function launchBrowser() {
             /*'--start-fullscreen',*/
             '--mute-audio',
             '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu',
+            '--disable-dev-shm-usage',
             `--auto-select-desktop-capture-source=${ENTIRE_SCREEN}` // this has to be like this otherwise the launcher will not read the argument. It has to do with node.js processes and how they handle quotes with shell=true. 
         ]
     };
