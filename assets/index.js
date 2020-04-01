@@ -308,10 +308,7 @@ function connectToSignalServer() {
                 frameRate: 6,
                 facingMode: "user"
             },
-            audio: {
-                sampleRate: { ideal: 44000 },
-                sampleSize: { ideal: 16 }
-            }
+            audio: true
         };
         navigator.mediaDevices.getUserMedia(constraints).then(getUserMediaSuccess).catch(
         function(error) {
