@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "puppeteer": "^1.11.0",
-    "express": "^4.16.0",
+    "express": "^4.17.3",
     "socket.io": "2.2.0",
     "youtube-dl": "^3.0.2"
   },
